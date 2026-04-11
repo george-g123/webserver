@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
 
-from llvmlite.ir import values
-
 @dataclass
 class NumberNode:
     value : str    
@@ -61,3 +59,10 @@ class UnaryMinus:
     node : Any
     def __repr__(self):
         return f"(-{self.node})"
+
+@dataclass
+class FunctionNode:
+    functionName : str
+    functionArgument : Any
+    def __repr__(self):
+        return f"cmath.{self.functionName}({str(self.functionArgument)})"

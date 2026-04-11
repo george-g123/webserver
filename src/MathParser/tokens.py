@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 class TokenType(Enum):
     NUMBER = 0
@@ -17,6 +16,5 @@ class TokenType(Enum):
 class Token:
     type: TokenType
     value : str
-
     def __repr__(self):
         return self.type.name + (f":{self.value}" if self.value != None else "")

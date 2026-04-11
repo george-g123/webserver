@@ -1,3 +1,4 @@
+from typing import Any
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -6,19 +7,10 @@ from numba import cuda
 import math
 import time
 import cmath
+from sympy import symbols, Derivative, sympify
 
-uf = "((z**(3))-(1))"
-udf = "3*z**2"
-
-funcf = f"def f(z):\n return {uf}"
-funcdf = f"def df(z):\n return {udf}"
-
-namespace = {"cmath": cmath}
-exec(funcf, namespace)
-exec(funcdf, namespace)
-
-ff = namespace["f"]
-fdf = namespace["df"]
+from .MathParser.lexer import Lexer
+from .MathParser.parser_ import Parser
 
 def kernelFactory(func, dfunc):
     f = cuda.jit(device=True)(func)
@@ -66,7 +58,20 @@ def kernelFactory(func, dfunc):
     return kernel
 
 class ComplexNewton():
-    def __init__(self, xMin:int=-8, xMax:int=8, yMin:int=-8, yMax:int=8, numPointsPerAxis:int=3000, convergenceDelta:float=1e-6, maxIterations:int=100, alpha:float=3.0, beta:float=0.05, maxColorOptions:int=20) -> None:
+    specialNamespace = {"cmath": cmath}
+
+    def __init__(self, xMin : int=-8, 
+                        xMax : int=8, 
+                        yMin : int=-8, 
+                        yMax : int=8, 
+                        numPointsPerAxis : int=3000, 
+                        convergenceDelta : float=1e-6,
+                        maxIterations : int=100, 
+                        alpha : float=3.0, 
+                        beta : float=0.05, 
+                        maxColorOptions : int=20,
+                        filename : str = Any) -> None:
+
         self.xMin  = xMin
         self.xMax = xMax
         self.yMin = yMin
@@ -77,9 +82,57 @@ class ComplexNewton():
         self.alpha = alpha 
         self.beta = beta
         self.maxColorOptions = maxColorOptions
+        self.function = None
+        self.dfunction = None
+        self.strFunction = ""
     
+    def setFunctions(self, uf : str) -> bool:
+        """
+        Attempts to set the function and its derivative.
+
+        Parameters
+        -----
+        uf : str
+            The user defined complex function w.r.t the complex variable ``z``. For example: `z^3-1`
+        udf : str
+            The user defined derivative function w.r.t the complex variable ``z``. For example: `3*z^2`
+
+        Returns
+        -----
+        success : bool
+            Whether or not the operation was successful
+        """
+        try:
+            if (len(uf) == 0):
+                raise Exception()
+
+            ufTokens = Lexer(uf).generateTokens()
+            ufSanitized = str(Parser(ufTokens).parse())
+
+            self.strFunction = uf
+        except Exception:
+            return False
+
+        exec(f"def f(z):\n return {ufSanitized}", self.specialNamespace)
+
+        z = symbols('z')
+        exec(f"def df(z):\n return {str(Derivative(sympify(ufSanitized), z).doit())}", self.specialNamespace)
+
+        self.strFunction = uf
+        self.function = self.specialNamespace["f"]
+        self.dfunction = self.specialNamespace["df"]
+
+        return True
 
     def run(self) -> float:
+        """
+        Run the Newton Fractal Generator with the given parameters.
+
+        Returns
+        -----
+        runtime : float
+            The runtime in seconds.
+        """
         startMilli = int(time.time()*1000)
 
         RRoots = np.zeros((self.numPointsPerAxis, self.numPointsPerAxis), dtype=np.float64)
@@ -95,7 +148,7 @@ class ComplexNewton():
         blocksY = int(np.ceil(self.numPointsPerAxis / threadsPerBlock[1]))
         grid = (blocksX, blocksY)
 
-        kernel = kernelFactory(ff, fdf)
+        kernel = kernelFactory(self.function, self.dfunction)
 
         kernel[grid, threadsPerBlock](DRRoots, DIRoots, DBrightness, self.xMin, self.xMax, self.yMin, self.yMax, self.maxIterations, self.convergenceDelta, self.alpha, self.beta)
         cuda.synchronize()
@@ -123,7 +176,7 @@ class ComplexNewton():
         ax.axvline(0, color="gray", linewidth=0.5, linestyle="--")
         ax.set_xlabel("Re(z)")
         ax.set_ylabel('Im(z)')
-        ax.set_title(f"Newton-Raphson convergence in the complex plane based on $f(z)=z^4+z^2+1$ with $\\alpha={self.alpha}$,\n$\\beta={self.beta}$, $N={self.numPointsPerAxis}$.")
+        ax.set_title(f"Newton-Raphson convergence in the complex plane based on $f(z)={self.strFunction}$ with $\\alpha={self.alpha}$,\n$\\beta={self.beta}$, $N={self.numPointsPerAxis}$.")
         ax.set_aspect("equal", adjustable="box")
 
         plt.savefig("GPU_2.png")
@@ -133,5 +186,6 @@ class ComplexNewton():
 
 if __name__ == "__main__":
     cn = ComplexNewton()
+    cn.setFunctions("z^4-1")
     runtime = cn.run()
     print(runtime)
