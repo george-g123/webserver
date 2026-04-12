@@ -65,4 +65,4 @@ class FunctionNode:
     functionName : str
     functionArgument : Any
     def __repr__(self):
-        return f"cmath.{self.functionName}({str(self.functionArgument)})"
+        return f"{self.functionName}({str(self.functionArgument)})"

@@ -41,9 +41,7 @@ class Lexer:
                 self.advance()
                 yield Token(TokenType.RPAREN, ")")
             elif self.currentChar.isalnum():
-                prevChar = self.currentChar
-                self.advance()
-                yield Token(TokenType.VAR, prevChar)
+                yield self.generateFunctions()
             else:
                 raise Exception(f"Illegal Character: '{self.currentChar}'")
 
@@ -69,4 +67,22 @@ class Lexer:
 
         return Token(TokenType.NUMBER, numberBuffer)
 
-    
+    def generateFunctions(self):
+        functionBuffer : str = ""
+
+        while self.currentChar != None and self.currentChar.isalnum():
+            functionBuffer += self.currentChar
+            self.advance()
+        
+        functionBuffer = functionBuffer.lower()
+
+        if functionBuffer == "z":
+            return Token(TokenType.VAR, "z")
+        elif functionBuffer == "i":
+            return Token(TokenType.NUMBER, "1j")
+        elif functionBuffer == "e":
+            return Token(TokenType.VAR, "e")
+        elif functionBuffer in ["sin", "cos", "tan", "sinh", "cosh", "exp", "log", "sqrt"]:
+            return Token(TokenType.FUNC, functionBuffer)
+        else:
+            raise Exception(f"Unknown function: {functionBuffer}")

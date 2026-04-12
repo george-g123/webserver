@@ -9,8 +9,8 @@ import time
 import cmath
 from sympy import symbols, Derivative, sympify
 
-from .MathParser.lexer import Lexer
-from .MathParser.parser_ import Parser
+from MathParser.lexer import Lexer
+from MathParser.parser_ import Parser
 
 def kernelFactory(func, dfunc):
     f = cuda.jit(device=True)(func)
@@ -58,8 +58,6 @@ def kernelFactory(func, dfunc):
     return kernel
 
 class ComplexNewton():
-    specialNamespace = {"cmath": cmath}
-
     def __init__(self, xMin : int=-8, 
                         xMax : int=8, 
                         yMin : int=-8, 
@@ -82,9 +80,27 @@ class ComplexNewton():
         self.alpha = alpha 
         self.beta = beta
         self.maxColorOptions = maxColorOptions
+        self.filename = filename
         self.function = None
         self.dfunction = None
         self.strFunction = ""
+
+        self.specialNamespace = {
+            "sin": cmath.sin,
+            "cos": cmath.cos,
+            "tan": cmath.tan,
+            "sinh": cmath.sinh,
+            "cosh": cmath.cosh,
+            "tanh": cmath.tanh,
+            "sqrt": cmath.sqrt,
+            "log": cmath.log,
+            "exp": cmath.exp,
+            "I": 1j,
+            "i": 1j,
+            "E": cmath.e,
+            "e":  cmath.e,
+            "pi": cmath.pi
+        }
     
     def setFunctions(self, uf : str) -> bool:
         """
@@ -179,13 +195,13 @@ class ComplexNewton():
         ax.set_title(f"Newton-Raphson convergence in the complex plane based on $f(z)={self.strFunction}$ with $\\alpha={self.alpha}$,\n$\\beta={self.beta}$, $N={self.numPointsPerAxis}$.")
         ax.set_aspect("equal", adjustable="box")
 
-        plt.savefig("GPU_2.png")
+        plt.savefig(self.filename)
         endMilli = int(time.time()*1000)
 
         return (endMilli-startMilli)/1000
 
 if __name__ == "__main__":
-    cn = ComplexNewton()
-    cn.setFunctions("z^4-1")
+    cn = ComplexNewton(filename="GPU_3.png")
+    cn.setFunctions("e^z+i")
     runtime = cn.run()
     print(runtime)

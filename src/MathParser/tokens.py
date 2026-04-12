@@ -11,6 +11,7 @@ class TokenType(Enum):
     RPAREN = 6
     EXP = 7
     VAR = 8
+    FUNC = 9
 
 @dataclass
 class Token:

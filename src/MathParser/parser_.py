@@ -71,18 +71,37 @@ class Parser:
                 self.raiseError()
             self.advance()
             return result
+
         elif token.type == TokenType.NUMBER:
             self.advance()
             return NumberNode(token.value)
+
         elif token.type == TokenType.VAR:
             self.advance()
             return VarNode(token.value)
+
         elif token.type == TokenType.PLUS:
             self.advance()
             return UnaryPlus(self.factor())
+
         elif token.type == TokenType.MINUS:
             self.advance()
             return UnaryMinus(self.factor())
-        
+
+        elif token.type == TokenType.FUNC:
+            functionName = token.value
+            self.advance()
+
+            if self.currentToken == None or self.currentToken.type != TokenType.LPAREN:
+                self.raiseError()
+
+            self.advance()
+            functionArgument = self.expr()
+
+            if self.currentToken == None or self.currentToken.type != TokenType.RPAREN:
+                self.raiseError()
+
+            self.advance()
+            return FunctionNode(functionName, functionArgument)        
         
         self.raiseError()
