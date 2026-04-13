@@ -68,7 +68,8 @@ class ComplexNewton():
                         alpha : float=3.0, 
                         beta : float=0.05, 
                         maxColorOptions : int=20,
-                        filename : str = Any) -> None:
+                        filename : str = Any,
+                        colouring : str = Any) -> None:
 
         self.xMin  = xMin
         self.xMax = xMax
@@ -81,6 +82,7 @@ class ComplexNewton():
         self.beta = beta
         self.maxColorOptions = maxColorOptions
         self.filename = filename
+        self.colouring = colouring
         self.function = None
         self.dfunction = None
         self.strFunction = ""
@@ -179,8 +181,49 @@ class ComplexNewton():
 
         hsv = np.zeros((self.numPointsPerAxis, self.numPointsPerAxis, 3))
         angles = np.angle(Z)
+        radii = np.abs(Z)
 
-        hsv[pointsConverged, 0] = (angles[pointsConverged] + np.pi) / (2*np.pi)
+        if (self.colouring == "angle"):
+            hsv[pointsConverged, 0] = (angles[pointsConverged] + np.pi) / (2*np.pi)
+
+        elif (self.colouring == "radius"):
+            hsv[pointsConverged, 0] = (radii[pointsConverged] * 0.3) % 1.0
+
+        elif (self.colouring == "categorical"):
+            ZRounded = np.round(Z[pointsConverged], decimals=3)
+            uniqueRoots, indices = np.unique(ZRounded, return_inverse=True)
+
+            hues = np.linspace(0, 1, max(1, len(uniqueRoots)), endpoint=False)
+            hsv[pointsConverged, 0] = hues[indices]
+
+        elif (self.colouring == "sum"):
+            hsv[pointsConverged, 0] = ((Z[pointsConverged].real + Z[pointsConverged].imag) * 0.1) % 1.0
+        
+        elif (self.colouring == "polar"):
+            ZRounded = np.round(Z[pointsConverged], decimals=3)
+            uniqueRoots, indices = np.unique(ZRounded, return_inverse=True)
+            numRoots = max(1, len(uniqueRoots))
+
+            uniqueAngles = np.angle(uniqueRoots)
+            uniqueRadii = np.abs(uniqueRoots)
+
+            sort = np.lexsort((uniqueRadii, uniqueAngles))
+
+            hues = np.linspace(0, 1, numRoots, endpoint=False)
+
+            sortedHues = np.zeros(numRoots)
+            sortedHues[sort] = hues
+
+            hsv[pointsConverged, 0] = sortedHues[indices]
+        
+        elif (self.colouring == "capped"):
+            ZRounded = np.round(Z[pointsConverged], decimals=3)
+            uniqueRoots, indices = np.unique(ZRounded, return_inverse=True)
+
+            colorOptions = min(len(uniqueRoots), self.maxColorOptions)
+
+            hsv[pointsConverged, 0] = ((indices % colorOptions) / colorOptions) % 1.0
+
         hsv[pointsConverged, 1] = 1.0
         hsv[pointsConverged, 2] = brightness[pointsConverged]
 
@@ -201,7 +244,7 @@ class ComplexNewton():
         return (endMilli-startMilli)/1000
 
 if __name__ == "__main__":
-    cn = ComplexNewton(filename="GPU_3.png")
-    cn.setFunctions("e^z+i")
+    cn = ComplexNewton(filename="GPU_8.png", colouring="capped")
+    cn.setFunctions("sin(z)")
     runtime = cn.run()
     print(runtime)
